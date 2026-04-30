@@ -19,7 +19,7 @@ db.configure(function(){
 });
 
 db.run('SELECT * FROM noticias ORDER BY id DESC', function(err, result){
- 	console.log('\n Records: ' + result.length);
+ 	console.log('\n Records: ' + db.results());
 });
 ```
 
@@ -35,8 +35,8 @@ db.configure(function(){
 });
 
 db.run('SELECT * FROM noticias ORDER BY id DESC', function(err, result){
- 	db.sqlList(result, 'id', 'titulo', function(){
- 		console.log('\n Records: ' + result.length);
+ 	db.list(result, 'id', 'titulo', function(){
+ 		console.log('\n Records: ' + db.results());
  	});
 });
 ```
@@ -85,6 +85,14 @@ app.configure('development', function(){
 app.get('/', function(req,  res){
   db.run('SELECT * FROM noticias', function(err, result, field){
     res.json(result);
+  });
+});
+
+app.get('/xml', function(req,  res){
+  db.run('SELECT * FROM noticias', function(err, result, field){
+    db.toXML(result, function(xml){
+      res.send(xml);
+    });
   });
 });
 
