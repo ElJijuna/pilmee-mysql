@@ -104,7 +104,6 @@ http.createServer(app).listen(app.get('port'), function(){
 ## Contact:
 
   * Twitter: [@pilmee](http://twitter.com/pilmee)
-  * Facebook: [PiLMee GaTes](http://fb.com/pilmee)
   * Github: [pilmee](http://github.com/pilmee)
-  * Emails: pilmee@gmail.com, pilmee@eticagnu.org
+  * Emails: pilmee@gmail.com
 	
