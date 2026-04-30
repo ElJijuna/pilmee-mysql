@@ -1,0 +1,25 @@
+{
+  "dependencies": {
+    "colors": "0.6.0-1",
+    "mysql": "2.0.0-alpha8",
+    "xml-mapping": "1.2.1"
+  },
+  "description": "Library to manage mysql, using the mysql module, shortens the programming necessary to provide greater ease so the developer. Power by @pilmee",
+  "keywords": [
+    "mysql",
+    "mysql manager",
+    "pilmee"
+  ],
+  "main": "pilmee-mysql.js",
+  "maintainers": [
+    {
+      "name": "@pilmee"
+    }
+  ],
+  "name": "pilmee-mysql",
+  "private": false,
+  "scripts": {
+    "start": "node app"
+  },
+  "version": "1.0.0"
+}
