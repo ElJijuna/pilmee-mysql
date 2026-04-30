@@ -1,1 +1,17 @@
 
+language: node_js
+node_js:
+  - 'stable'
+before_script:
+  - npm install
+script:
+  - npm test
+after_success:
+  - npm version patch
+  - git add .
+  - git commit -m 'bump patch version'
+  - git push origin master
+deploy:
+  provider: npm
+  email: $EMAIL
+  api_key: $AUTH_TOKEN
