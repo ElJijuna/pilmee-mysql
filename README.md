@@ -105,5 +105,5 @@ http.createServer(app).listen(app.get('port'), function(){
 
   * Twitter: [@pilmee](http://twitter.com/pilmee)
   * Github: [pilmee](http://github.com/pilmee)
-  * Emails: pilmee@gmail.com
+  * Email: pilmee@gmail.com
 	
