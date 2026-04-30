@@ -1,12 +1,13 @@
 
 /* 
  *     PILMEE GATES --- MYSQL GESTOR 2013
- *  	require module mysql
+ *		requerimiento modulo mysql
  */
 
-var mysql  = require('mysql')
-  , util   = require('util')
-  , colors = require('colors');
+var mysql    = require('mysql')
+  , util     = require('util')
+  , colors   = require('colors')
+  , xml = require('xml-mapping');
 
 /*
  *  PARAMETROS DE CONEXION
@@ -20,6 +21,7 @@ var parameters = {
   , port     : 3306
   , debug    : false
   , debugSQL : false
+  , format   : 'json'
   , insecureAuth : false
   , supportBigNumbers : false
   , bigNumberStrings : false
@@ -30,7 +32,8 @@ var parameters = {
  *  CONFIGURACIONES
  */
 
-var counter = 0;
+var counter = 0
+  , sqlResults = 0;
 
 var connection = function(){
 	counter++;
@@ -64,9 +67,15 @@ var logSQL = function(sql){
 
 var legend = function(){
 	console.log('┌───────────────────────────────────────────────┐'.bold.cyan);
+	console.log('│    LIBRARY TO MANAGE MYSQL (pilmee-mysql)     │'.bold.cyan);
 	console.log('│ ☺ Create by PiLMee Gates → @pilmee            │'.bold.cyan);
 	console.log('│ Emails: pilmee@gmail.com, pilmee@eticagnu.org │'.bold.cyan);
 	console.log('└───────────────────────────────────────────────┘\n'.bold.cyan);
+};
+
+exports.lastInsertId = null;
+exports.results = function(){
+	return sqlResults;
 };
 
 exports.configure = function(callback){
@@ -91,7 +100,10 @@ exports.run = function(sql, callback){
 	var cnx = new connection;
 	config(cnx);
 	cnx.connect(messageConnect);	
-	cnx.query(sql, callback);
+	cnx.query(sql, function(err, result, headers){
+		sqlResults = result.length;
+		callback(err, result, headers);
+	});
 	if(parameters.debugSQL) logSQL(sql);
 	cnx.end(messageDisconnect);
 };
@@ -100,12 +112,15 @@ exports.runEscape = function(sql, values, callback){
 	var cnx = new connection;
 	config(cnx);
 	cnx.connect(messageConnect);	
-	cnx.query(sql, cnx.escape(values), callback);
+	cnx.query(sql, cnx.escape(values),  function(err, result, headers){
+		sqlResults = result.length;
+		callback(err, result, headers);
+	});
 	if(parameters.debugSQL) logSQL(sql);
 	cnx.end(messageDisconnect);
 };
 
-exports.sqlList = function(result, keyName, displayName, callback){
+exports.list = function(result, keyName, displayName, callback){
 	console.log('\n─────────────────────────────────────────────────\nSQL Data List\n─────────────────────────────────────────────────\n'.bold.green);
 	console.log('  #\tKEY\tDISPLAY NAME'.bold.magenta);
 	var pos = 1;
@@ -115,6 +130,11 @@ exports.sqlList = function(result, keyName, displayName, callback){
 	}
 	callback();
 	console.log('─────────────────────────────────────────────────'.bold.green);
+};
+
+exports.toXML = function(json, callback){
+	var result = xml.dump(json);
+	callback("<?xml version='1.0' encoding='ISO-8859-1'?>\n" + result);
 };
 
 legend();
