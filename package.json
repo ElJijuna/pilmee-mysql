@@ -4,6 +4,9 @@
     "mysql": "2.0.0-alpha8",
     "xml-mapping": "1.2.1"
   },
+  "devDependencies": {
+    "jasmine": "^3.2.0"
+  },
   "description": "Library to manage mysql, using the mysql module, shortens the programming necessary to provide greater ease so the developer. Power by @pilmee",
   "keywords": [
     "mysql",
