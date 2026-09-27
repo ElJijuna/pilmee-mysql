@@ -4,6 +4,7 @@ var assert = require('node:assert/strict');
 var test = require('node:test');
 var mysql = require('mysql2');
 var db = require('..');
+var { queryFormat } = require('../src/query-format');
 
 test('preserves the public CommonJS interface', () => {
   assert.deepEqual(Object.keys(db), [
@@ -292,6 +293,41 @@ test('end is a no-op without a pool', async () => {
       resolve();
     });
   });
+});
+
+test('debugSQL logs the SQL with named parameters substituted', () => {
+  const original = mysql.createConnection;
+  const originalLog = console.log;
+  const logged = [];
+  const client = db.createClient({ debugSQL: true });
+
+  mysql.createConnection = () => ({
+    end: () => {},
+    query: (...args) => args.at(-1)(null, [], []),
+  });
+  console.log = (message) => logged.push(message);
+
+  try {
+    client.runEscape(
+      'SELECT * FROM t WHERE name = :name AND id = :id',
+      { name: "O'Hara", id: 3 },
+      () => {},
+    );
+    client.run('SELECT :raw', () => {});
+  } finally {
+    mysql.createConnection = original;
+    console.log = originalLog;
+  }
+
+  assert.match(logged[0], /SELECT \* FROM t WHERE name = 'O\\'Hara' AND id = 3/);
+  assert.match(logged[1], /SELECT :raw/);
+});
+
+test('leaves placeholders untouched when the driver passes no named values', () => {
+  const connection = { escape: (value) => `<${value}>` };
+
+  assert.equal(queryFormat.call(connection, 'SELECT :length, :id', []), 'SELECT :length, :id');
+  assert.equal(queryFormat.call(connection, 'SELECT :id', undefined), 'SELECT :id');
 });
 
 test('creates clients with isolated configuration and result state', () => {

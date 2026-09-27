@@ -116,6 +116,23 @@ db.run('SELECT * FROM noticias', (error, rows, fields) => {
 - `list(...)` prints legacy tabular output.
 - `toXML(...)` and `toXMLAsync(...)` serialize values as XML.
 
+## Debugging SQL
+
+Set `debugSQL: true` to print every query to the console before it runs:
+
+```js
+const db = require('@eljijuna/pilmee-mysql').createClient({ /* ... */ debugSQL: true });
+
+await db.runEscapeAsync('SELECT * FROM users WHERE email = :email', { email: 'ana@example.com' });
+// → SELECT * FROM users WHERE email = 'ana@example.com'
+```
+
+Named parameters are substituted and escaped exactly as they are sent to MySQL.
+
+> **Warning:** because the log contains the real parameter values, passwords, tokens, and personal
+> data passed as parameters end up in your console or log files. Enable `debugSQL` only during local
+> development, never in production.
+
 ## Development
 
 ```sh

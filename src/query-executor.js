@@ -50,6 +50,17 @@ function createExecutor(configuration) {
     current.end(callback);
   }
 
+  // Same formatting the driver applies, so the debug log shows the SQL actually sent.
+  function formatForLog(sql, values) {
+    const timezone = configuration.get('timezone');
+
+    return queryFormat.call(
+      { escape: (value) => mysql.escape(value, false, timezone) },
+      sql,
+      values,
+    );
+  }
+
   function execute(sql, values, shouldEscape, callback) {
     const usePool = Boolean(configuration.get('pool'));
     const connection = usePool
@@ -77,7 +88,7 @@ function createExecutor(configuration) {
     }
 
     if (configuration.get('debugSQL')) {
-      output.sql(sql);
+      output.sql(shouldEscape ? formatForLog(sql, values) : sql);
     }
 
     if (!usePool) {

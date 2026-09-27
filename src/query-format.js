@@ -1,7 +1,8 @@
 'use strict';
 
 function queryFormat(query, values) {
-  if (!values) {
+  // mysql2 passes [] when a query has no values; only plain objects hold named parameters.
+  if (!values || Array.isArray(values)) {
     return query;
   }
 
