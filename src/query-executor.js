@@ -4,6 +4,25 @@ const mysql = require('mysql');
 const configureQueryFormat = require('./query-format');
 const output = require('./output');
 
+function describeResult(result) {
+  let count = 0;
+
+  if (Array.isArray(result)) {
+    count = result.length;
+  } else if (typeof result.affectedRows === 'number') {
+    count = result.affectedRows;
+  }
+
+  return {
+    count,
+    insertId: typeof result.insertId === 'number' ? result.insertId : null,
+  };
+}
+
+function toResponse(result, fields) {
+  return { result, fields, ...describeResult(result || {}) };
+}
+
 function createExecutor(configuration) {
   let sqlResults = 0;
   let lastInsertId = null;
@@ -15,16 +34,12 @@ function createExecutor(configuration) {
 
     function complete(error, result, fields) {
       if (!error && result) {
-        if (Array.isArray(result)) {
-          sqlResults = result.length;
-        } else if (typeof result.affectedRows === 'number') {
-          sqlResults = result.affectedRows;
-        } else {
-          sqlResults = 0;
-        }
+        const metadata = describeResult(result);
 
-        if (typeof result.insertId === 'number') {
-          lastInsertId = result.insertId;
+        sqlResults = metadata.count;
+
+        if (metadata.insertId !== null) {
+          lastInsertId = metadata.insertId;
         }
       }
 
@@ -65,7 +80,7 @@ function createExecutor(configuration) {
             return;
           }
 
-          resolve({ result, fields });
+          resolve(toResponse(result, fields));
         });
       });
     },
@@ -78,7 +93,7 @@ function createExecutor(configuration) {
             return;
           }
 
-          resolve({ result, fields });
+          resolve(toResponse(result, fields));
         });
       });
     },

@@ -176,6 +176,8 @@ test('provides additive Promise interfaces', async () => {
       assert.deepEqual(await db.runAsync('SELECT 1'), {
         result: [{ id: 1 }],
         fields: ['fields'],
+        count: 1,
+        insertId: null,
       });
     });
   } finally {
@@ -183,6 +185,36 @@ test('provides additive Promise interfaces', async () => {
   }
 
   assert.match(await db.toXMLAsync({ item: 'value' }), /^<\?xml version='1\.0'/);
+});
+
+test('returns per-query metadata that is not affected by concurrent queries', async () => {
+  const original = mysql.createConnection;
+  const client = db.createClient();
+  const pending = [];
+
+  mysql.createConnection = () => ({
+    config: {},
+    end: () => {},
+    query: (sql, callback) => pending.push({ sql, callback }),
+  });
+
+  try {
+    const first = client.runAsync('INSERT first');
+    const second = client.runAsync('INSERT second');
+
+    pending[0].callback(null, { affectedRows: 1, insertId: 10 }, undefined);
+    pending[1].callback(null, { affectedRows: 2, insertId: 20 }, undefined);
+
+    const [firstResponse, secondResponse] = await Promise.all([first, second]);
+
+    assert.equal(firstResponse.insertId, 10);
+    assert.equal(firstResponse.count, 1);
+    assert.equal(secondResponse.insertId, 20);
+    assert.equal(secondResponse.count, 2);
+    assert.equal(client.lastInsertId, 20);
+  } finally {
+    mysql.createConnection = original;
+  }
 });
 
 test('creates clients with isolated configuration and result state', () => {

@@ -27,18 +27,39 @@ if (hasDatabase) {
 }
 
 integrationTest('queries MySQL with named parameters and tracks metadata', async () => {
-  await client.runEscapeAsync('INSERT INTO pilmee_items (title) VALUES (:title)', {
+  const insert = await client.runEscapeAsync('INSERT INTO pilmee_items (title) VALUES (:title)', {
     title: 'modernized',
   });
 
+  assert.equal(insert.count, 1);
+  assert.equal(typeof insert.insertId, 'number');
   assert.equal(client.results(), 1);
-  assert.equal(typeof client.lastInsertId, 'number');
+  assert.equal(client.lastInsertId, insert.insertId);
 
-  const { result } = await client.runEscapeAsync(
+  const { result, count } = await client.runEscapeAsync(
     'SELECT id, title FROM pilmee_items WHERE id = :id',
-    { id: client.lastInsertId },
+    { id: insert.insertId },
   );
 
+  assert.equal(count, 1);
   assert.equal(result.length, 1);
   assert.equal(result[0].title, 'modernized');
+});
+
+integrationTest('keeps insert ids separate for concurrent inserts', async () => {
+  const titles = ['first', 'second', 'third'];
+  const responses = await Promise.all(
+    titles.map((title) =>
+      client.runEscapeAsync('INSERT INTO pilmee_items (title) VALUES (:title)', { title }),
+    ),
+  );
+
+  for (const [index, { insertId }] of responses.entries()) {
+    const { result } = await client.runEscapeAsync(
+      'SELECT title FROM pilmee_items WHERE id = :id',
+      { id: insertId },
+    );
+
+    assert.equal(result[0].title, titles[index]);
+  }
 });
