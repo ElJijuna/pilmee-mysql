@@ -10,9 +10,11 @@ exports.results = executor.results;
 exports.configure = configuration.configure;
 exports.set = configuration.set;
 exports.get = configuration.get;
+
 exports.changeUser = function changeUser(connection, values, callback) {
   connection.changeUser(values, callback);
 };
+
 exports.run = executor.run;
 exports.runEscape = executor.runEscape;
 exports.list = output.list;

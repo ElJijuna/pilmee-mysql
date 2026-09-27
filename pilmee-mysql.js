@@ -1,4 +1,3 @@
-
 'use strict';
 
 // Compatibility entry point: existing deep imports keep resolving here.
