@@ -21,7 +21,8 @@
   "name": "pilmee-mysql",
   "private": false,
   "scripts": {
-    "start": "node app"
+    "start": "node app",
+    "test": "node --test"
   },
   "version": "1.0.1",
   "license": "MIT",

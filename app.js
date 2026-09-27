@@ -7,9 +7,7 @@ db.configure(function(){
 });
 
 db.run('SELECT * FROM noticias ORDER BY id DESC', function(err, result){
- 	db.sqlList(result, 'id', 'titulo', function(){
- 		console.log('\n Records: ' + result.length);
- 	});
+  db.list(result, 'id', 'titulo', function(){
+    console.log('\n Records: ' + result.length);
+  });
 });
-
-
