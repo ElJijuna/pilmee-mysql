@@ -31,6 +31,13 @@ async function query(): Promise<void> {
     return insertId;
   });
   void id;
+
+  const user = await client.queryOne<{ id: number; name: string }>(
+    'SELECT id, name FROM users WHERE id = :id',
+    { id: 1 },
+  );
+  const name: string | undefined = user?.name;
+  void name;
   await client.endAsync();
 }
 

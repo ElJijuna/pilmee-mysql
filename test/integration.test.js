@@ -107,3 +107,19 @@ integrationTest('commits and rolls back transactions', async () => {
     ['committed'],
   );
 });
+
+integrationTest('queryOne returns the first row or null', async () => {
+  const { insertId } = await client.runEscapeAsync(
+    'INSERT INTO pilmee_items (title) VALUES (:title)',
+    { title: 'single' },
+  );
+
+  assert.deepEqual(
+    await client.queryOne('SELECT title FROM pilmee_items WHERE id = :id', { id: insertId }),
+    { title: 'single' },
+  );
+  assert.equal(
+    await client.queryOne('SELECT title FROM pilmee_items WHERE id = :id', { id: -1 }),
+    null,
+  );
+});

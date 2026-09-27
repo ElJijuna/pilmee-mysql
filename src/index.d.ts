@@ -43,6 +43,11 @@ declare namespace db {
       sql: string,
       values: Record<string, unknown>,
     ): Promise<QueryResponse<T>>;
+    /** Resolves with the first row, or null when the query returns no rows. */
+    queryOne<T = Record<string, unknown>>(
+      sql: string,
+      values?: Record<string, unknown>,
+    ): Promise<T | null>;
   }
 
   interface Client {
@@ -63,6 +68,11 @@ declare namespace db {
       sql: string,
       values: Record<string, unknown>,
     ): Promise<QueryResponse<T>>;
+    /** Resolves with the first row, or null when the query returns no rows. */
+    queryOne<T = Record<string, unknown>>(
+      sql: string,
+      values?: Record<string, unknown>,
+    ): Promise<T | null>;
     /**
      * Runs `work` inside a transaction on a single connection. Commits when the returned promise
      * resolves and rolls back (rethrowing the error) when it rejects.

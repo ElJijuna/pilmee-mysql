@@ -23,6 +23,14 @@ function toResponse(result, fields) {
   return { result, fields, ...describeResult(result || {}) };
 }
 
+// Resolves with the first row of a SELECT, or null when there are no rows (or no row set).
+async function firstRow(target, sql, values) {
+  const { result } =
+    values === undefined ? await target.runAsync(sql) : await target.runEscapeAsync(sql, values);
+
+  return Array.isArray(result) && result.length > 0 ? result[0] : null;
+}
+
 function createExecutor(configuration) {
   let sqlResults = 0;
   let lastInsertId = null;
@@ -186,6 +194,9 @@ function createExecutor(configuration) {
 
         return queryAsync(connection, sql, values, true);
       },
+      queryOne(sql, values) {
+        return firstRow(tx, sql, values);
+      },
     };
 
     try {
@@ -273,6 +284,9 @@ function createExecutor(configuration) {
           resolve(toResponse(result, fields));
         });
       });
+    },
+    queryOne(sql, values) {
+      return firstRow(executor, sql, values);
     },
     transaction,
   };

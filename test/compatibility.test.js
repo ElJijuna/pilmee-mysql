@@ -18,6 +18,7 @@ test('preserves the public CommonJS interface', () => {
     'runEscape',
     'runAsync',
     'runEscapeAsync',
+    'queryOne',
     'transaction',
     'end',
     'endAsync',
@@ -526,6 +527,65 @@ test('end still closes the pool when a running transaction fails', async () => {
   }
 
   assert.equal(poolEnded, true);
+});
+
+async function queryOneWith(result, run) {
+  const original = mysql.createConnection;
+  const calls = [];
+
+  mysql.createConnection = () => ({
+    end: () => {},
+    query: (...args) => {
+      calls.push(args.slice(0, -1));
+      args.at(-1)(null, result, []);
+    },
+  });
+
+  try {
+    return { value: await run(db.createClient()), calls };
+  } finally {
+    mysql.createConnection = original;
+  }
+}
+
+test('queryOne resolves with the first row', async () => {
+  const { value, calls } = await queryOneWith([{ id: 1 }, { id: 2 }], (client) =>
+    client.queryOne('SELECT id FROM t WHERE a = :a', { a: 1 }),
+  );
+
+  assert.deepEqual(value, { id: 1 });
+  assert.deepEqual(calls, [['SELECT id FROM t WHERE a = :a', { a: 1 }]]);
+});
+
+test('queryOne runs SQL without values as-is', async () => {
+  const { calls } = await queryOneWith([{ id: 1 }], (client) => client.queryOne('SELECT 1'));
+
+  assert.deepEqual(calls, [['SELECT 1']]);
+});
+
+test('queryOne resolves with null when there are no rows', async () => {
+  const empty = await queryOneWith([], (client) => client.queryOne('SELECT 1'));
+  const write = await queryOneWith({ affectedRows: 1 }, (client) => client.queryOne('UPDATE t'));
+
+  assert.equal(empty.value, null);
+  assert.equal(write.value, null);
+});
+
+test('queryOne is available inside transactions', async () => {
+  const connection = createTransactionConnection();
+
+  connection.query = (sql, ...args) => {
+    connection.events.push(sql);
+    args.at(-1)(null, [{ id: 9 }], []);
+  };
+
+  await withStandaloneConnection(connection, async (client) => {
+    const row = await client.transaction((tx) =>
+      tx.queryOne('SELECT id FROM t WHERE id = :id FOR UPDATE', { id: 9 }),
+    );
+
+    assert.deepEqual(row, { id: 9 });
+  });
 });
 
 test('creates clients with isolated configuration and result state', () => {
