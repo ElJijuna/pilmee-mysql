@@ -1,11 +1,15 @@
 'use strict';
 
-var configuration = require('./configuration');
-var executor = require('./query-executor');
-var output = require('./output');
-var xml = require('./xml');
+const configuration = require('./configuration');
+const executor = require('./query-executor');
+const output = require('./output');
+const xml = require('./xml');
 
-exports.lastInsertId = null;
+Object.defineProperty(exports, 'lastInsertId', {
+  enumerable: true,
+  get: executor.lastInsertId,
+  set: executor.setLastInsertId,
+});
 exports.results = executor.results;
 exports.configure = configuration.configure;
 exports.set = configuration.set;
@@ -17,7 +21,8 @@ exports.changeUser = function changeUser(connection, values, callback) {
 
 exports.run = executor.run;
 exports.runEscape = executor.runEscape;
+exports.runAsync = executor.runAsync;
+exports.runEscapeAsync = executor.runEscapeAsync;
 exports.list = output.list;
 exports.toXML = xml.toXML;
-
-output.legend();
+exports.toXMLAsync = xml.toXMLAsync;

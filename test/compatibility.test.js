@@ -15,8 +15,11 @@ test('preserves the public CommonJS interface', () => {
     'changeUser',
     'run',
     'runEscape',
+    'runAsync',
+    'runEscapeAsync',
     'list',
     'toXML',
+    'toXMLAsync',
   ]);
   assert.equal(db.lastInsertId, null);
 });
@@ -49,15 +52,12 @@ test('delegates changeUser and returns undefined', () => {
   assert.deepEqual(received, [{ database: 'next' }, callback]);
 });
 
-test('preserves run lifecycle and named query formatting', () => {
+test('runs queries, closes connections, and formats named parameters', () => {
   var original = mysql.createConnection;
   var events = [];
   var callbackArguments;
   var fake = {
     config: {},
-    connect: () => {
-      events.push('connect');
-    },
     query: (sql, callback) => {
       events.push(['query', sql]);
       callback(null, [{ id: 1 }, { id: 2 }], ['fields']);
@@ -65,14 +65,14 @@ test('preserves run lifecycle and named query formatting', () => {
     end: () => {
       events.push('end');
     },
-    escape: (value) => '<' + value + '>',
+    escape: (value) => `<${value}>`,
   };
   mysql.createConnection = () => fake;
 
   try {
     assert.equal(
-      db.run('SELECT :id', function () {
-        callbackArguments = Array.prototype.slice.call(arguments);
+      db.run('SELECT :id', (...args) => {
+        callbackArguments = args;
       }),
       undefined,
     );
@@ -80,7 +80,7 @@ test('preserves run lifecycle and named query formatting', () => {
     mysql.createConnection = original;
   }
 
-  assert.deepEqual(events, ['connect', ['query', 'SELECT :id'], 'end']);
+  assert.deepEqual(events, [['query', 'SELECT :id'], 'end']);
   assert.deepEqual(callbackArguments, [null, [{ id: 1 }, { id: 2 }], ['fields']]);
   assert.equal(db.results(), 2);
   assert.equal(fake.config.queryFormat.call(fake, 'SELECT :id', { id: 7 }), 'SELECT <7>');
@@ -93,10 +93,10 @@ test('passes runEscape values through the configured query formatter', () => {
     config: {},
     connect: () => {},
     end: () => {},
-    escape: (value) => '<' + value + '>',
-    query: function () {
-      queryArguments = Array.prototype.slice.call(arguments, 0, 2);
-      arguments[2](null, [], []);
+    escape: (value) => `<${value}>`,
+    query: (...args) => {
+      queryArguments = args.slice(0, 2);
+      args[2](null, [], []);
     },
   };
   mysql.createConnection = () => fake;
@@ -110,6 +110,78 @@ test('passes runEscape values through the configured query formatter', () => {
   assert.deepEqual(queryArguments, ['SELECT ?', { id: 7 }]);
   assert.equal(fake.config.queryFormat.call(fake, 'SELECT :id', { id: 7 }), 'SELECT <7>');
   assert.equal(db.results(), 0);
+});
+
+test('tracks affected rows and the last insert id for write results', () => {
+  const original = mysql.createConnection;
+  const fake = {
+    config: {},
+    connect: () => {},
+    end: () => {},
+    query: (_sql, callback) => callback(null, { affectedRows: 3, insertId: 27 }, []),
+  };
+
+  mysql.createConnection = () => fake;
+
+  try {
+    db.run('INSERT INTO items VALUES (1)', () => {});
+  } finally {
+    mysql.createConnection = original;
+  }
+
+  assert.equal(db.results(), 3);
+  assert.equal(db.lastInsertId, 27);
+});
+
+test('does not mask driver errors when no result is returned', () => {
+  const original = mysql.createConnection;
+  const expectedError = new Error('query failed');
+
+  let receivedError;
+
+  const fake = {
+    config: {},
+    connect: () => {},
+    end: () => {},
+    query: (_sql, callback) => callback(expectedError),
+  };
+
+  mysql.createConnection = () => fake;
+
+  try {
+    db.run('INVALID', (error) => {
+      receivedError = error;
+    });
+  } finally {
+    mysql.createConnection = original;
+  }
+
+  assert.equal(receivedError, expectedError);
+});
+
+test('provides additive Promise interfaces', async () => {
+  const original = mysql.createConnection;
+  const fake = {
+    config: {},
+    connect: () => {},
+    end: () => {},
+    query: (_sql, callback) => callback(null, [{ id: 1 }], ['fields']),
+  };
+
+  mysql.createConnection = () => fake;
+
+  try {
+    await assert.doesNotReject(async () => {
+      assert.deepEqual(await db.runAsync('SELECT 1'), {
+        result: [{ id: 1 }],
+        fields: ['fields'],
+      });
+    });
+  } finally {
+    mysql.createConnection = original;
+  }
+
+  assert.match(await db.toXMLAsync({ item: 'value' }), /^<\?xml version='1\.0'/);
 });
 
 test('preserves XML callback output', () => {

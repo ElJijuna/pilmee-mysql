@@ -1,28 +1,37 @@
 'use strict';
 
-var mysql = require('mysql');
-var configuration = require('./configuration');
-var configureQueryFormat = require('./query-format');
-var output = require('./output');
+const mysql = require('mysql');
+const configuration = require('./configuration');
+const configureQueryFormat = require('./query-format');
+const output = require('./output');
 
-var counter = 0;
-var sqlResults = 0;
+let sqlResults = 0;
+let lastInsertId = null;
 
-function connection() {
-  counter++;
-
+function createConnection() {
   return mysql.createConnection(configuration.connectionOptions());
 }
 
 function execute(sql, values, shouldEscape, callback) {
-  var cnx = new connection();
+  const cnx = createConnection();
+
   configureQueryFormat(cnx);
-  cnx.connect(function messageConnect() {
-    output.connectionEstablished(counter);
-  });
 
   function complete(err, result, headers) {
-    sqlResults = result.length;
+    if (!err && result) {
+      if (Array.isArray(result)) {
+        sqlResults = result.length;
+      } else if (typeof result.affectedRows === 'number') {
+        sqlResults = result.affectedRows;
+      } else {
+        sqlResults = 0;
+      }
+
+      if (typeof result.insertId === 'number') {
+        lastInsertId = result.insertId;
+      }
+    }
+
     callback(err, result, headers);
   }
 
@@ -36,11 +45,19 @@ function execute(sql, values, shouldEscape, callback) {
     output.sql(sql);
   }
 
-  cnx.end(output.connectionClosed);
+  cnx.end();
 }
 
 exports.results = function results() {
   return sqlResults;
+};
+
+exports.lastInsertId = function getLastInsertId() {
+  return lastInsertId;
+};
+
+exports.setLastInsertId = function setLastInsertId(value) {
+  lastInsertId = value;
 };
 
 exports.run = function run(sql, callback) {
@@ -49,4 +66,32 @@ exports.run = function run(sql, callback) {
 
 exports.runEscape = function runEscape(sql, values, callback) {
   execute(sql, values, true, callback);
+};
+
+exports.runAsync = function runAsync(sql) {
+  return new Promise((resolve, reject) => {
+    exports.run(sql, (error, result, fields) => {
+      if (error) {
+        reject(error);
+
+        return;
+      }
+
+      resolve({ result, fields });
+    });
+  });
+};
+
+exports.runEscapeAsync = function runEscapeAsync(sql, values) {
+  return new Promise((resolve, reject) => {
+    exports.runEscape(sql, values, (error, result, fields) => {
+      if (error) {
+        reject(error);
+
+        return;
+      }
+
+      resolve({ result, fields });
+    });
+  });
 };

@@ -11,6 +11,9 @@
         "super-configs": "^1.25.1"
     },
     "description": "Library to manage mysql, using the mysql module, shortens the programming necessary to provide greater ease so the developer. Power by @pilmee",
+    "engines": {
+        "node": ">=20.19.0"
+    },
     "keywords": [
         "mysql",
         "mysql-manager"
@@ -29,6 +32,7 @@
     ],
     "name": "pilmee-mysql",
     "private": false,
+    "type": "commonjs",
     "scripts": {
         "check": "npm run lint && npm run format:check && npm test",
         "format": "biome check --write .",

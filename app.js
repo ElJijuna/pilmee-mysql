@@ -6,8 +6,8 @@ db.configure(() => {
   db.set('database', 'ninjacode');
 });
 
-db.run('SELECT * FROM noticias ORDER BY id DESC', (err, result) => {
+db.run('SELECT * FROM noticias ORDER BY id DESC', (_error, result) => {
   db.list(result, 'id', 'titulo', () => {
-    console.log('\n Records: ' + result.length);
+    console.log(`\n Records: ${result.length}`);
   });
 });

@@ -6,6 +6,37 @@
 ## Installation
 
     $ npm install pilmee-mysql
+
+Requires Node.js 20.19 or newer.
+
+## Modern usage
+
+The Promise interface is recommended for new code. Named parameters are escaped by the MySQL
+driver.
+
+```js
+const db = require('pilmee-mysql');
+
+db.configure(() => {
+  db.set('host', 'localhost');
+  db.set('user', 'root');
+  db.set('database', 'ninjacode');
+});
+
+async function main() {
+  const { result: rows } = await db.runEscapeAsync(
+    'SELECT * FROM noticias WHERE id = :id',
+    { id: 1 },
+  );
+
+  console.log(rows);
+}
+
+main().catch(console.error);
+```
+
+The callback methods `run`, `runEscape`, and `toXML` remain available. Their Promise equivalents
+are `runAsync`, `runEscapeAsync`, and `toXMLAsync`.
   
 ## Example 1 - Basic:
 

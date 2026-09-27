@@ -1,26 +1,9 @@
 'use strict';
 
-var util = require('util');
-var colors = require('colors/safe');
-
-exports.connectionEstablished = function connectionEstablished(counter) {
-  util.log(colors.yellow('Connection established  [ #' + counter + ' ]'));
-};
-
-exports.connectionClosed = function connectionClosed() {
-  util.log(colors.yellow('Connection closed'));
-};
+const colors = require('colors/safe');
 
 exports.sql = function sql(statement) {
-  console.log('\n │ \n │ SQL DEBUG\n │ \n │→ ' + statement + '\n │ \n | --- end ---\n │\n');
-};
-
-exports.legend = function legend() {
-  console.log(colors.cyan(colors.bold('┌───────────────────────────────────────────────┐')));
-  console.log(colors.cyan(colors.bold('│    LIBRARY TO MANAGE MYSQL (pilmee-mysql)     │')));
-  console.log(colors.cyan(colors.bold('│       ☺ Create by PiLMee → @pilmee            │')));
-  console.log(colors.cyan(colors.bold('│             pilmee@gmail.com                  │')));
-  console.log(colors.cyan(colors.bold('└───────────────────────────────────────────────┘\n')));
+  console.log(`\n │ \n │ SQL DEBUG\n │ \n │→ ${statement}\n │ \n | --- end ---\n │\n`);
 };
 
 exports.list = function list(result, keyName, displayName, callback) {
@@ -32,12 +15,10 @@ exports.list = function list(result, keyName, displayName, callback) {
     ),
   );
   console.log(colors.magenta(colors.bold('  #\tKEY\tDISPLAY NAME')));
-  var position = 1;
+  let position = 1;
 
-  for (var element in result) {
-    console.log(
-      '→ ' + position + '.\t' + result[element][keyName] + '\t' + result[element][displayName],
-    );
+  for (const element in result) {
+    console.log(`→ ${position}.\t${result[element][keyName]}\t${result[element][displayName]}`);
     position++;
   }
 

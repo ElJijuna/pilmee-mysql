@@ -9,7 +9,7 @@ module.exports = function configureQueryFormat(connection) {
     return query.replace(
       /:(\w+)/g,
       function replaceParameter(text, key) {
-        if (Object.prototype.hasOwnProperty.call(values, key)) {
+        if (Object.hasOwn(values, key)) {
           return this.escape(values[key]);
         }
 
