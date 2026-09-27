@@ -17,9 +17,4 @@ function queryFormat(query, values) {
   );
 }
 
-function configureQueryFormat(connection) {
-  connection.config.queryFormat = queryFormat;
-}
-
-module.exports = configureQueryFormat;
-module.exports.queryFormat = queryFormat;
+module.exports = { queryFormat };

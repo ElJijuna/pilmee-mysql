@@ -2,7 +2,7 @@
 
 var assert = require('node:assert/strict');
 var test = require('node:test');
-var mysql = require('mysql');
+var mysql = require('mysql2');
 var db = require('..');
 
 test('preserves the public CommonJS interface', () => {
@@ -59,8 +59,8 @@ test('runs queries, closes connections, and formats named parameters', () => {
   var original = mysql.createConnection;
   var events = [];
   var callbackArguments;
+  var options;
   var fake = {
-    config: {},
     query: (sql, callback) => {
       events.push(['query', sql]);
       callback(null, [{ id: 1 }, { id: 2 }], ['fields']);
@@ -70,7 +70,12 @@ test('runs queries, closes connections, and formats named parameters', () => {
     },
     escape: (value) => `<${value}>`,
   };
-  mysql.createConnection = () => fake;
+
+  mysql.createConnection = (value) => {
+    options = value;
+
+    return fake;
+  };
 
   try {
     assert.equal(
@@ -86,14 +91,14 @@ test('runs queries, closes connections, and formats named parameters', () => {
   assert.deepEqual(events, [['query', 'SELECT :id'], 'end']);
   assert.deepEqual(callbackArguments, [null, [{ id: 1 }, { id: 2 }], ['fields']]);
   assert.equal(db.results(), 2);
-  assert.equal(fake.config.queryFormat.call(fake, 'SELECT :id', { id: 7 }), 'SELECT <7>');
+  assert.equal(options.queryFormat.call(fake, 'SELECT :id', { id: 7 }), 'SELECT <7>');
 });
 
 test('passes runEscape values through the configured query formatter', () => {
   var original = mysql.createConnection;
   var queryArguments;
+  var options;
   var fake = {
-    config: {},
     connect: () => {},
     end: () => {},
     escape: (value) => `<${value}>`,
@@ -102,7 +107,12 @@ test('passes runEscape values through the configured query formatter', () => {
       args[2](null, [], []);
     },
   };
-  mysql.createConnection = () => fake;
+
+  mysql.createConnection = (value) => {
+    options = value;
+
+    return fake;
+  };
 
   try {
     db.runEscape('SELECT ?', { id: 7 }, () => {});
@@ -111,14 +121,13 @@ test('passes runEscape values through the configured query formatter', () => {
   }
 
   assert.deepEqual(queryArguments, ['SELECT ?', { id: 7 }]);
-  assert.equal(fake.config.queryFormat.call(fake, 'SELECT :id', { id: 7 }), 'SELECT <7>');
+  assert.equal(options.queryFormat.call(fake, 'SELECT :id', { id: 7 }), 'SELECT <7>');
   assert.equal(db.results(), 0);
 });
 
 test('tracks affected rows and the last insert id for write results', () => {
   const original = mysql.createConnection;
   const fake = {
-    config: {},
     connect: () => {},
     end: () => {},
     query: (_sql, callback) => callback(null, { affectedRows: 3, insertId: 27 }, []),
@@ -143,7 +152,6 @@ test('does not mask driver errors when no result is returned', () => {
   let receivedError;
 
   const fake = {
-    config: {},
     connect: () => {},
     end: () => {},
     query: (_sql, callback) => callback(expectedError),
@@ -165,7 +173,6 @@ test('does not mask driver errors when no result is returned', () => {
 test('provides additive Promise interfaces', async () => {
   const original = mysql.createConnection;
   const fake = {
-    config: {},
     connect: () => {},
     end: () => {},
     query: (_sql, callback) => callback(null, [{ id: 1 }], ['fields']),
@@ -195,7 +202,6 @@ test('returns per-query metadata that is not affected by concurrent queries', as
   const pending = [];
 
   mysql.createConnection = () => ({
-    config: {},
     end: () => {},
     query: (sql, callback) => pending.push({ sql, callback }),
   });

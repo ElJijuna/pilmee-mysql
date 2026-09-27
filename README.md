@@ -7,6 +7,15 @@ Modern CommonJS MySQL client with callbacks, Promises, named parameters, and iso
 - Node.js 20.19 or newer
 - MySQL-compatible database
 
+## Driver
+
+Queries run on [`mysql2`](https://github.com/sidorares/node-mysql2), which supports MySQL 8's
+default `caching_sha2_password` authentication. Differences from the previous `mysql` driver:
+
+- `JSON` columns are returned as parsed values instead of strings.
+- TypeScript types come from `mysql2` (`QueryError`, `FieldPacket`, `ResultSetHeader`) and require
+  `@types/node`.
+
 ## Installation
 
 The package is published to GitHub Packages:
@@ -115,7 +124,7 @@ npm run check
 ```
 
 Integration tests run automatically when `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, and
-`MYSQL_DATABASE` are configured. GitHub Actions runs them against MySQL 8.
+`MYSQL_DATABASE` are configured. GitHub Actions runs them against MySQL 8.0 and 8.4.
 
 Publishing is triggered by a published GitHub Release and uses the repository's `GITHUB_TOKEN` to
 upload `@eljijuna/pilmee-mysql` to GitHub Packages.

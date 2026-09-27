@@ -1,8 +1,7 @@
 'use strict';
 
-const mysql = require('mysql');
-const configureQueryFormat = require('./query-format');
-const { queryFormat } = configureQueryFormat;
+const mysql = require('mysql2');
+const { queryFormat } = require('./query-format');
 const output = require('./output');
 
 function describeResult(result) {
@@ -55,11 +54,7 @@ function createExecutor(configuration) {
     const usePool = Boolean(configuration.get('pool'));
     const connection = usePool
       ? getPool()
-      : mysql.createConnection(configuration.connectionOptions());
-
-    if (!usePool) {
-      configureQueryFormat(connection);
-    }
+      : mysql.createConnection({ ...configuration.connectionOptions(), queryFormat });
 
     function complete(error, result, fields) {
       if (!error && result) {
