@@ -86,14 +86,14 @@ test('preserves run lifecycle and named query formatting', () => {
   assert.equal(fake.config.queryFormat.call(fake, 'SELECT :id', { id: 7 }), 'SELECT <7>');
 });
 
-test('preserves runEscape escaping and query overload', () => {
+test('passes runEscape values through the configured query formatter', () => {
   var original = mysql.createConnection;
   var queryArguments;
   var fake = {
     config: {},
     connect: () => {},
     end: () => {},
-    escape: (values) => 'escaped:' + values.id,
+    escape: (value) => '<' + value + '>',
     query: function () {
       queryArguments = Array.prototype.slice.call(arguments, 0, 2);
       arguments[2](null, [], []);
@@ -107,7 +107,8 @@ test('preserves runEscape escaping and query overload', () => {
     mysql.createConnection = original;
   }
 
-  assert.deepEqual(queryArguments, ['SELECT ?', 'escaped:7']);
+  assert.deepEqual(queryArguments, ['SELECT ?', { id: 7 }]);
+  assert.equal(fake.config.queryFormat.call(fake, 'SELECT :id', { id: 7 }), 'SELECT <7>');
   assert.equal(db.results(), 0);
 });
 

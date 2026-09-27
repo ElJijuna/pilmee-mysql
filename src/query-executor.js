@@ -27,7 +27,7 @@ function execute(sql, values, shouldEscape, callback) {
   }
 
   if (shouldEscape) {
-    cnx.query(sql, cnx.escape(values), complete);
+    cnx.query(sql, values, complete);
   } else {
     cnx.query(sql, complete);
   }
