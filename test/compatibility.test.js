@@ -18,6 +18,7 @@ test('preserves the public CommonJS interface', () => {
     'runEscape',
     'runAsync',
     'runEscapeAsync',
+    'transaction',
     'end',
     'endAsync',
     'list',
@@ -328,6 +329,133 @@ test('leaves placeholders untouched when the driver passes no named values', () 
 
   assert.equal(queryFormat.call(connection, 'SELECT :length, :id', []), 'SELECT :length, :id');
   assert.equal(queryFormat.call(connection, 'SELECT :id', undefined), 'SELECT :id');
+});
+
+function createTransactionConnection({ failRollback = false } = {}) {
+  const events = [];
+  const connection = {
+    events,
+    beginTransaction: (callback) => {
+      events.push('begin');
+      callback(null);
+    },
+    commit: (callback) => {
+      events.push('commit');
+      callback(null);
+    },
+    rollback: (callback) => {
+      events.push('rollback');
+      callback(failRollback ? new Error('rollback failed') : null);
+    },
+    query: (sql, ...args) => {
+      events.push(sql);
+      args.at(-1)(null, { affectedRows: 1, insertId: 5 }, undefined);
+    },
+    end: () => events.push('end'),
+    destroy: () => events.push('destroy'),
+    release: () => events.push('release'),
+  };
+
+  return connection;
+}
+
+async function withStandaloneConnection(connection, run) {
+  const original = mysql.createConnection;
+
+  mysql.createConnection = () => connection;
+
+  try {
+    await run(db.createClient());
+  } finally {
+    mysql.createConnection = original;
+  }
+}
+
+test('commits a transaction and returns the work result', async () => {
+  const connection = createTransactionConnection();
+
+  await withStandaloneConnection(connection, async (client) => {
+    const value = await client.transaction(async (tx) => {
+      const { insertId } = await tx.runEscapeAsync('INSERT :a', { a: 1 });
+
+      await tx.runAsync('UPDATE b');
+
+      return insertId;
+    });
+
+    assert.equal(value, 5);
+  });
+
+  assert.deepEqual(connection.events, ['begin', 'INSERT :a', 'UPDATE b', 'commit', 'end']);
+});
+
+test('rolls back and rethrows when the work fails', async () => {
+  const connection = createTransactionConnection();
+  const failure = new Error('boom');
+
+  await withStandaloneConnection(connection, async (client) => {
+    await assert.rejects(
+      client.transaction(async (tx) => {
+        await tx.runAsync('INSERT a');
+
+        throw failure;
+      }),
+      failure,
+    );
+  });
+
+  assert.deepEqual(connection.events, ['begin', 'INSERT a', 'rollback', 'destroy']);
+});
+
+test('reports the original error when the rollback also fails', async () => {
+  const connection = createTransactionConnection({ failRollback: true });
+  const failure = new Error('original');
+
+  await withStandaloneConnection(connection, async (client) => {
+    await assert.rejects(
+      client.transaction(async () => {
+        throw failure;
+      }),
+      failure,
+    );
+  });
+});
+
+test('rejects queries on a finished transaction', async () => {
+  const connection = createTransactionConnection();
+
+  let leaked;
+
+  await withStandaloneConnection(connection, async (client) => {
+    await client.transaction(async (tx) => {
+      leaked = tx;
+    });
+  });
+
+  await assert.rejects(leaked.runAsync('SELECT 1'), /Transaction already finished/);
+});
+
+test('borrows and releases a pooled connection for transactions', async () => {
+  const originalPool = mysql.createPool;
+  const connection = createTransactionConnection();
+
+  mysql.createPool = () => ({
+    getConnection: (callback) => callback(null, connection),
+    end: (callback) => process.nextTick(callback),
+  });
+
+  try {
+    const client = db.createClient({ pool: true });
+
+    await client.transaction(async (tx) => {
+      await tx.runAsync('INSERT a');
+    });
+    await client.endAsync();
+  } finally {
+    mysql.createPool = originalPool;
+  }
+
+  assert.deepEqual(connection.events, ['begin', 'INSERT a', 'commit', 'release']);
 });
 
 test('creates clients with isolated configuration and result state', () => {

@@ -37,6 +37,7 @@ function createClient(options = {}) {
     runEscape: executor.runEscape,
     runAsync: executor.runAsync,
     runEscapeAsync: executor.runEscapeAsync,
+    transaction: executor.transaction,
     end: executor.end,
     endAsync: executor.endAsync,
     list: output.list,

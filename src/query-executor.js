@@ -61,12 +61,7 @@ function createExecutor(configuration) {
     );
   }
 
-  function execute(sql, values, shouldEscape, callback) {
-    const usePool = Boolean(configuration.get('pool'));
-    const connection = usePool
-      ? getPool()
-      : mysql.createConnection({ ...configuration.connectionOptions(), queryFormat });
-
+  function query(connection, sql, values, shouldEscape, callback) {
     function complete(error, result, fields) {
       if (!error && result) {
         const metadata = describeResult(result);
@@ -90,9 +85,115 @@ function createExecutor(configuration) {
     if (configuration.get('debugSQL')) {
       output.sql(shouldEscape ? formatForLog(sql, values) : sql);
     }
+  }
+
+  function queryAsync(connection, sql, values, shouldEscape) {
+    return new Promise((resolve, reject) => {
+      query(connection, sql, values, shouldEscape, (error, result, fields) => {
+        if (error) {
+          reject(error);
+
+          return;
+        }
+
+        resolve(toResponse(result, fields));
+      });
+    });
+  }
+
+  function execute(sql, values, shouldEscape, callback) {
+    const usePool = Boolean(configuration.get('pool'));
+    const connection = usePool
+      ? getPool()
+      : mysql.createConnection({ ...configuration.connectionOptions(), queryFormat });
+
+    query(connection, sql, values, shouldEscape, callback);
 
     if (!usePool) {
       connection.end();
+    }
+  }
+
+  // A transaction needs every statement on the same connection: borrow one from the pool
+  // or open a dedicated one.
+  function acquireConnection() {
+    if (!configuration.get('pool')) {
+      const connection = mysql.createConnection({
+        ...configuration.connectionOptions(),
+        queryFormat,
+      });
+
+      return Promise.resolve({
+        connection,
+        release: (failed) => (failed ? connection.destroy() : connection.end(() => {})),
+      });
+    }
+
+    return new Promise((resolve, reject) => {
+      getPool().getConnection((error, connection) => {
+        if (error) {
+          reject(error);
+
+          return;
+        }
+
+        resolve({ connection, release: () => connection.release() });
+      });
+    });
+  }
+
+  function callConnection(connection, method) {
+    return new Promise((resolve, reject) => {
+      connection[method]((error) => (error ? reject(error) : resolve()));
+    });
+  }
+
+  async function transaction(work) {
+    const { connection, release } = await acquireConnection();
+
+    let active = true;
+    let failed = false;
+
+    function ensureActive() {
+      if (!active) {
+        throw new Error('Transaction already finished');
+      }
+    }
+
+    const tx = {
+      async runAsync(sql) {
+        ensureActive();
+
+        return queryAsync(connection, sql, undefined, false);
+      },
+      async runEscapeAsync(sql, values) {
+        ensureActive();
+
+        return queryAsync(connection, sql, values, true);
+      },
+    };
+
+    try {
+      await callConnection(connection, 'beginTransaction');
+
+      const value = await work(tx);
+
+      await callConnection(connection, 'commit');
+
+      return value;
+    } catch (error) {
+      failed = true;
+
+      try {
+        await callConnection(connection, 'rollback');
+      } catch {
+        // Report the original failure even if the rollback itself fails.
+      }
+
+      throw error;
+    } finally {
+      active = false;
+      release(failed);
     }
   }
 
@@ -148,6 +249,7 @@ function createExecutor(configuration) {
         });
       });
     },
+    transaction,
   };
 
   return executor;

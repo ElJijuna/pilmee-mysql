@@ -37,6 +37,14 @@ declare namespace db {
     [key: string]: unknown;
   }
 
+  interface Transaction {
+    runAsync<T = QueryResult>(sql: string): Promise<QueryResponse<T>>;
+    runEscapeAsync<T = QueryResult>(
+      sql: string,
+      values: Record<string, unknown>,
+    ): Promise<QueryResponse<T>>;
+  }
+
   interface Client {
     lastInsertId: number | null;
     results(): number;
@@ -55,6 +63,11 @@ declare namespace db {
       sql: string,
       values: Record<string, unknown>,
     ): Promise<QueryResponse<T>>;
+    /**
+     * Runs `work` inside a transaction on a single connection. Commits when the returned promise
+     * resolves and rolls back (rethrowing the error) when it rejects.
+     */
+    transaction<T>(work: (tx: Transaction) => Promise<T>): Promise<T>;
     end(callback?: (error: QueryError | null) => void): void;
     endAsync(): Promise<void>;
     list(

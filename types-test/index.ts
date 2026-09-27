@@ -23,6 +23,14 @@ async function query(): Promise<void> {
   const insertId: number | null = response.insertId;
   void count;
   void insertId;
+  const id: number | null = await client.transaction(async (tx) => {
+    const { insertId } = await tx.runEscapeAsync('INSERT INTO t (a) VALUES (:a)', { a: 1 });
+
+    await tx.runAsync('SELECT 1');
+
+    return insertId;
+  });
+  void id;
   await client.endAsync();
 }
 

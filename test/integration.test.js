@@ -79,3 +79,31 @@ integrationTest('runs concurrent queries through a connection pool', async () =>
     [1, 2, 3, 4, 5],
   );
 });
+
+integrationTest('commits and rolls back transactions', async () => {
+  await client.transaction(async (tx) => {
+    await tx.runEscapeAsync('INSERT INTO pilmee_items (title) VALUES (:title)', {
+      title: 'committed',
+    });
+  });
+
+  await assert.rejects(
+    pooledClient.transaction(async (tx) => {
+      await tx.runEscapeAsync('INSERT INTO pilmee_items (title) VALUES (:title)', {
+        title: 'rolled-back',
+      });
+
+      throw new Error('abort');
+    }),
+    /abort/,
+  );
+
+  const { result } = await client.runAsync(
+    "SELECT title FROM pilmee_items WHERE title IN ('committed', 'rolled-back')",
+  );
+
+  assert.deepEqual(
+    result.map(({ title }) => title),
+    ['committed'],
+  );
+});
