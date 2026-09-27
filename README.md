@@ -1,26 +1,35 @@
-![pilmee-mysql logo](http://eticagnu.org/wp-content/uploads/2013/05/pilmee-mysql.png)
+# @eljijuna/pilmee-mysql
 
-  Library to manage mysql, using the mysql module, shortens the programming necessary to provide greater ease so the developer. 
-  Power by @pilmee
-  
+Modern CommonJS MySQL client with callbacks, Promises, named parameters, and isolated clients.
+
+## Requirements
+
+- Node.js 20.19 or newer
+- MySQL-compatible database
+
 ## Installation
 
-    $ npm install pilmee-mysql
+The package is published to GitHub Packages:
 
-Requires Node.js 20.19 or newer.
+```ini
+# .npmrc
+@eljijuna:registry=https://npm.pkg.github.com
+```
 
-## Modern usage
+```sh
+npm install @eljijuna/pilmee-mysql
+```
 
-The Promise interface is recommended for new code. Named parameters are escaped by the MySQL
-driver.
+Private-package consumers must authenticate npm with a GitHub token that can read packages.
+
+## Promise interface
 
 ```js
-const db = require('pilmee-mysql');
-
-db.configure(() => {
-  db.set('host', 'localhost');
-  db.set('user', 'root');
-  db.set('database', 'ninjacode');
+const db = require('@eljijuna/pilmee-mysql').createClient({
+  host: 'localhost',
+  user: 'root',
+  password: 'secret',
+  database: 'ninjacode',
 });
 
 async function main() {
@@ -35,106 +44,55 @@ async function main() {
 main().catch(console.error);
 ```
 
-The callback methods `run`, `runEscape`, and `toXML` remain available. Their Promise equivalents
-are `runAsync`, `runEscapeAsync`, and `toXMLAsync`.
-  
-## Example 1 - Basic:
+Each client created with `createClient(options)` owns its configuration, result count, and last
+insert ID. This prevents concurrent applications from sharing mutable state.
+
+## Callback compatibility
+
+The original singleton and callback methods remain available:
 
 ```js
-var db = require('pilmee-mysql');
+const db = require('@eljijuna/pilmee-mysql');
 
-db.configure(function(){
-	db.set('host', 'localhost');
-	db.set('user', 'root');
-	db.set('database', 'ninjacode');
-});
-
-db.run('SELECT * FROM noticias ORDER BY id DESC', function(err, result){
- 	console.log('\n Records: ' + db.results());
-});
-```
-
-## Example 2 - Basic:
-
-```js
-var db = require('pilmee-mysql');
-
-db.configure(function(){
-	db.set('host', 'localhost');
-	db.set('user', 'root');
-	db.set('database', 'ninjacode');
-});
-
-db.run('SELECT * FROM noticias ORDER BY id DESC', function(err, result){
- 	db.list(result, 'id', 'titulo', function(){
- 		console.log('\n Records: ' + db.results());
- 	});
-});
-```
-
-## Example 3 - Use ExpressJS:
-
-```js
-
-/**
- * Module dependencies.
- */
-
-var express = require('express')
-  , routes = require('./routes')
-  , user = require('./routes/user')
-  , http = require('http')
-  , path = require('path');
-
-var db = require('pilmee-mysql');
-db.configure(function(){
+db.configure(() => {
   db.set('host', 'localhost');
   db.set('user', 'root');
   db.set('database', 'ninjacode');
 });
 
-var app = express();
-
-app.configure(function(){
-  app.set('port', process.env.PORT || 3000);
-  app.set('views', __dirname + '/views');
-  app.set('view engine', 'jade');
-  app.use(express.favicon());
-  app.use(express.logger('dev'));
-  app.use(express.bodyParser());
-  app.use(express.methodOverride());
-  app.use(express.cookieParser('your secret here'));
-  app.use(express.session());
-  app.use(app.router);
-  app.use(express.static(path.join(__dirname, 'public')));
-});
-
-app.configure('development', function(){
-  app.use(express.errorHandler());
-});
-
-app.get('/', function(req,  res){
-  db.run('SELECT * FROM noticias', function(err, result, field){
-    res.json(result);
-  });
-});
-
-app.get('/xml', function(req,  res){
-  db.run('SELECT * FROM noticias', function(err, result, field){
-    db.toXML(result, function(xml){
-      res.send(xml);
-    });
-  });
-});
-
-http.createServer(app).listen(app.get('port'), function(){
-  console.log("Express server listening on port " + app.get('port'));
+db.run('SELECT * FROM noticias', (error, rows, fields) => {
+  if (error) throw error;
+  console.log(rows, fields);
 });
 ```
 
-## Contact:
+## Interface
 
-  * Twitter: [@pilmee](http://twitter.com/pilmee)
-  * Github: [pilmee](http://github.com/pilmee)
-  * Email: pilmee@gmail.com
-	
+- `createClient(options)` creates an isolated client.
+- `run(sql, callback)` executes SQL using callbacks.
+- `runEscape(sql, values, callback)` executes SQL with named parameters.
+- `runAsync(sql)` returns `{ result, fields }`.
+- `runEscapeAsync(sql, values)` returns `{ result, fields }`.
+- `results()` returns the row count or affected-row count from the latest successful query.
+- `lastInsertId` contains the latest insert ID.
+- `set(key, value)` and `get(key)` manage legacy singleton configuration.
+- `changeUser(connection, values, callback)` delegates to a MySQL connection.
+- `list(...)` prints legacy tabular output.
+- `toXML(...)` and `toXMLAsync(...)` serialize values as XML.
+
+## Development
+
+```sh
+npm ci
+npm run check
+```
+
+Integration tests run automatically when `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, and
+`MYSQL_DATABASE` are configured. GitHub Actions runs them against MySQL 8.
+
+Publishing is triggered by a published GitHub Release and uses the repository's `GITHUB_TOKEN` to
+upload `@eljijuna/pilmee-mysql` to GitHub Packages.
+
+## License
+
+MIT

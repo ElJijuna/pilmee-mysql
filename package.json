@@ -1,5 +1,6 @@
 {
     "dependencies": {
+        "@types/mysql": "^2.15.27",
         "colors": "^1.4.0",
         "mysql": "^2.18.1",
         "xml-mapping": "^1.7.2"
@@ -7,10 +8,10 @@
     "devDependencies": {
         "@biomejs/biome": "^2.5.14",
         "eslint": "^10.11.0",
-        "jasmine": "^3.2.0",
-        "super-configs": "^1.25.1"
+        "super-configs": "^1.25.1",
+        "typescript": "npm:@typescript/typescript6@^6.0.2"
     },
-    "description": "Library to manage mysql, using the mysql module, shortens the programming necessary to provide greater ease so the developer. Power by @pilmee",
+    "description": "Modern CommonJS MySQL client with callbacks, Promises, named parameters, and isolated clients.",
     "engines": {
         "node": ">=20.19.0"
     },
@@ -19,30 +20,47 @@
         "mysql-manager"
     ],
     "exports": {
-        ".": "./src/index.js"
+        ".": {
+            "types": "./src/index.d.ts",
+            "require": "./src/index.js",
+            "default": "./src/index.js"
+        }
     },
     "files": [
         "src"
     ],
     "main": "./src/index.js",
+    "types": "./src/index.d.ts",
     "maintainers": [
         {
             "name": "@pilmee"
         }
     ],
-    "name": "pilmee-mysql",
+    "name": "@eljijuna/pilmee-mysql",
     "private": false,
+    "publishConfig": {
+        "registry": "https://npm.pkg.github.com"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/ElJijuna/pilmee-mysql.git"
+    },
+    "bugs": {
+        "url": "https://github.com/ElJijuna/pilmee-mysql/issues"
+    },
+    "homepage": "https://github.com/ElJijuna/pilmee-mysql#readme",
     "type": "commonjs",
     "scripts": {
-        "check": "npm run lint && npm run format:check && npm test",
+        "check": "npm run lint && npm run format:check && npm run typecheck && npm test",
         "format": "biome check --write .",
         "format:check": "biome check .",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "start": "node app",
-        "test": "node --test"
+        "test": "node --test",
+        "typecheck": "tsc --project tsconfig.json"
     },
-    "version": "1.0.1",
+    "version": "2.0.0",
     "license": "MIT",
     "author": "pilmee <pilmee@gmail.com> (https://github.com/ElJijuna)"
 }

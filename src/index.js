@@ -1,28 +1,43 @@
 'use strict';
 
-const configuration = require('./configuration');
-const executor = require('./query-executor');
+const { createConfiguration } = require('./configuration');
+const { createExecutor } = require('./query-executor');
 const output = require('./output');
 const xml = require('./xml');
 
-Object.defineProperty(exports, 'lastInsertId', {
-  enumerable: true,
-  get: executor.lastInsertId,
-  set: executor.setLastInsertId,
-});
-exports.results = executor.results;
-exports.configure = configuration.configure;
-exports.set = configuration.set;
-exports.get = configuration.get;
+function createClient(options = {}) {
+  const configuration = createConfiguration(options);
+  const executor = createExecutor(configuration);
+  const client = {};
 
-exports.changeUser = function changeUser(connection, values, callback) {
-  connection.changeUser(values, callback);
-};
+  Object.defineProperty(client, 'lastInsertId', {
+    enumerable: true,
+    get: executor.lastInsertId,
+    set: executor.setLastInsertId,
+  });
 
-exports.run = executor.run;
-exports.runEscape = executor.runEscape;
-exports.runAsync = executor.runAsync;
-exports.runEscapeAsync = executor.runEscapeAsync;
-exports.list = output.list;
-exports.toXML = xml.toXML;
-exports.toXMLAsync = xml.toXMLAsync;
+  Object.assign(client, {
+    results: executor.results,
+    configure: configuration.configure,
+    set: configuration.set,
+    get: configuration.get,
+    changeUser(connection, values, callback) {
+      connection.changeUser(values, callback);
+    },
+    run: executor.run,
+    runEscape: executor.runEscape,
+    runAsync: executor.runAsync,
+    runEscapeAsync: executor.runEscapeAsync,
+    list: output.list,
+    toXML: xml.toXML,
+    toXMLAsync: xml.toXMLAsync,
+  });
+
+  return client;
+}
+
+const defaultClient = createClient();
+
+defaultClient.createClient = createClient;
+
+module.exports = defaultClient;

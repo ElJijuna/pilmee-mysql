@@ -20,6 +20,7 @@ test('preserves the public CommonJS interface', () => {
     'list',
     'toXML',
     'toXMLAsync',
+    'createClient',
   ]);
   assert.equal(db.lastInsertId, null);
 });
@@ -182,6 +183,21 @@ test('provides additive Promise interfaces', async () => {
   }
 
   assert.match(await db.toXMLAsync({ item: 'value' }), /^<\?xml version='1\.0'/);
+});
+
+test('creates clients with isolated configuration and result state', () => {
+  const first = db.createClient({ host: 'first.example' });
+  const second = db.createClient({ host: 'second.example' });
+
+  first.set('database', 'first_database');
+  first.lastInsertId = 99;
+
+  assert.equal(first.get('host'), 'first.example');
+  assert.equal(second.get('host'), 'second.example');
+  assert.equal(first.get('database'), 'first_database');
+  assert.equal(second.get('database'), '');
+  assert.equal(first.lastInsertId, 99);
+  assert.equal(second.lastInsertId, null);
 });
 
 test('preserves XML callback output', () => {
