@@ -458,6 +458,76 @@ test('borrows and releases a pooled connection for transactions', async () => {
   assert.deepEqual(connection.events, ['begin', 'INSERT a', 'commit', 'release']);
 });
 
+test('end waits for running transactions before closing the pool', async () => {
+  const originalPool = mysql.createPool;
+  const connection = createTransactionConnection();
+  const { events } = connection;
+
+  let finishWork;
+
+  mysql.createPool = () => ({
+    getConnection: (callback) => callback(null, connection),
+    end: (callback) => {
+      events.push('pool end');
+      process.nextTick(callback);
+    },
+  });
+
+  try {
+    const client = db.createClient({ pool: true });
+    const running = client.transaction(async (tx) => {
+      await tx.runAsync('INSERT a');
+      await new Promise((resolve) => {
+        finishWork = resolve;
+      });
+      await tx.runAsync('INSERT b');
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const ending = client.endAsync();
+
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(events.includes('pool end'), false, 'pool stays open while the transaction runs');
+
+    finishWork();
+    await Promise.all([running, ending]);
+  } finally {
+    mysql.createPool = originalPool;
+  }
+
+  assert.deepEqual(events, ['begin', 'INSERT a', 'INSERT b', 'commit', 'release', 'pool end']);
+});
+
+test('end still closes the pool when a running transaction fails', async () => {
+  const originalPool = mysql.createPool;
+
+  let poolEnded = false;
+
+  mysql.createPool = () => ({
+    getConnection: (callback) => callback(null, createTransactionConnection()),
+    end: (callback) => {
+      poolEnded = true;
+      process.nextTick(callback);
+    },
+  });
+
+  try {
+    const client = db.createClient({ pool: true });
+    const running = client.transaction(async () => {
+      throw new Error('boom');
+    });
+    const ending = client.endAsync();
+
+    await assert.rejects(running, /boom/);
+    await ending;
+  } finally {
+    mysql.createPool = originalPool;
+  }
+
+  assert.equal(poolEnded, true);
+});
+
 test('creates clients with isolated configuration and result state', () => {
   const first = db.createClient({ host: 'first.example' });
   const second = db.createClient({ host: 'second.example' });

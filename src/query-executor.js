@@ -28,6 +28,8 @@ function createExecutor(configuration) {
   let lastInsertId = null;
   let pool = null;
 
+  const pendingTransactions = new Set();
+
   function getPool() {
     if (!pool) {
       pool = mysql.createPool({ ...configuration.poolOptions(), queryFormat });
@@ -148,7 +150,20 @@ function createExecutor(configuration) {
     });
   }
 
+  // Tracks running transactions so end() can wait for them instead of cutting their connection.
   async function transaction(work) {
+    const running = runTransaction(work);
+
+    pendingTransactions.add(running);
+
+    try {
+      return await running;
+    } finally {
+      pendingTransactions.delete(running);
+    }
+  }
+
+  async function runTransaction(work) {
     const { connection, release } = await acquireConnection();
 
     let active = true;
@@ -203,12 +218,22 @@ function createExecutor(configuration) {
     setLastInsertId: (value) => {
       lastInsertId = value;
     },
-    // Closes pooled connections; later queries open a new pool if pooling is still enabled.
-    end(callback = () => {}) {
-      closePool((error) => callback(error || null));
+    // Waits for running transactions, then closes pooled connections. Later queries open a new
+    // pool if pooling is still enabled.
+    async end(callback = () => {}) {
+      let failure = null;
+
+      try {
+        await executor.endAsync();
+      } catch (error) {
+        failure = error;
+      }
+
+      callback(failure);
     },
-    endAsync() {
-      return new Promise((resolve, reject) => {
+    async endAsync() {
+      await Promise.allSettled(pendingTransactions);
+      await new Promise((resolve, reject) => {
         closePool((error) => (error ? reject(error) : resolve()));
       });
     },
