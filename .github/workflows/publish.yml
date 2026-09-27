@@ -1,4 +1,4 @@
-name: Publish GitHub Package
+name: Publish
 
 on:
   release:
@@ -6,11 +6,33 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
-  publish:
+  npm:
+    name: npmjs.com (@pilmee/mysql)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20.19.0
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm run check
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  github-packages:
+    name: GitHub Packages (@eljijuna/mysql)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v7
@@ -21,6 +43,8 @@ jobs:
           scope: '@eljijuna'
       - run: npm ci
       - run: npm run check
+      # GitHub Packages only accepts the repository owner's scope.
+      - run: npm pkg set name=@eljijuna/mysql
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

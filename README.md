@@ -1,4 +1,4 @@
-# @eljijuna/pilmee-mysql
+# @pilmee/mysql
 
 Modern CommonJS MySQL client with callbacks, Promises, named parameters, and isolated clients.
 
@@ -18,7 +18,14 @@ default `caching_sha2_password` authentication. Differences from the previous `m
 
 ## Installation
 
-The package is published to GitHub Packages:
+From npm:
+
+```sh
+npm install @pilmee/mysql
+```
+
+The same package is also published to GitHub Packages as `@eljijuna/mysql` (GitHub Packages only
+accepts the repository owner's scope):
 
 ```ini
 # .npmrc
@@ -26,15 +33,16 @@ The package is published to GitHub Packages:
 ```
 
 ```sh
-npm install @eljijuna/pilmee-mysql
+# Installs @eljijuna/mysql under the name @pilmee/mysql, so require('@pilmee/mysql') works.
+npm install @pilmee/mysql@npm:@eljijuna/mysql
 ```
 
-Private-package consumers must authenticate npm with a GitHub token that can read packages.
+GitHub Packages requires npm to be authenticated with a GitHub token that can read packages.
 
 ## Promise interface
 
 ```js
-const db = require('@eljijuna/pilmee-mysql').createClient({
+const db = require('@pilmee/mysql').createClient({
   host: 'localhost',
   user: 'root',
   password: 'secret',
@@ -71,7 +79,7 @@ insert ID. This prevents concurrent applications from sharing mutable state.
 By default every query opens and closes its own connection. Enable `pool` to reuse connections:
 
 ```js
-const db = require('@eljijuna/pilmee-mysql').createClient({
+const db = require('@pilmee/mysql').createClient({
   host: 'localhost',
   user: 'root',
   database: 'ninjacode',
@@ -123,7 +131,7 @@ const orderId = await db.transaction(async (tx) => {
 The original singleton and callback methods remain available:
 
 ```js
-const db = require('@eljijuna/pilmee-mysql');
+const db = require('@pilmee/mysql');
 
 db.configure(() => {
   db.set('host', 'localhost');
@@ -165,7 +173,7 @@ db.run('SELECT * FROM noticias', (error, rows, fields) => {
 Set `debugSQL: true` to print every query to the console before it runs:
 
 ```js
-const db = require('@eljijuna/pilmee-mysql').createClient({ /* ... */ debugSQL: true });
+const db = require('@pilmee/mysql').createClient({ /* ... */ debugSQL: true });
 
 await db.runEscapeAsync('SELECT * FROM users WHERE email = :email', { email: 'ana@example.com' });
 // → SELECT * FROM users WHERE email = 'ana@example.com'
@@ -187,8 +195,10 @@ npm run check
 Integration tests run automatically when `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, and
 `MYSQL_DATABASE` are configured. GitHub Actions runs them against MySQL 8.0 and 8.4.
 
-Publishing is triggered by a published GitHub Release and uses the repository's `GITHUB_TOKEN` to
-upload `@eljijuna/pilmee-mysql` to GitHub Packages.
+Publishing is triggered by a published GitHub Release and runs two jobs:
+
+- `@pilmee/mysql` to npmjs.com with provenance, using the `NPM_TOKEN` repository secret.
+- `@eljijuna/mysql` to GitHub Packages, using the repository's `GITHUB_TOKEN`.
 
 ## License
 

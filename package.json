@@ -35,10 +35,10 @@
             "name": "@pilmee"
         }
     ],
-    "name": "@eljijuna/pilmee-mysql",
+    "name": "@pilmee/mysql",
     "private": false,
     "publishConfig": {
-        "registry": "https://npm.pkg.github.com"
+        "access": "public"
     },
     "repository": {
         "type": "git",
