@@ -1,6 +1,6 @@
 'use strict';
 
-const { createConfiguration } = require('./configuration');
+const { createConfiguration, connectionKeys } = require('./configuration');
 const { createExecutor } = require('./query-executor');
 const output = require('./output');
 const xml = require('./xml');
@@ -19,7 +19,16 @@ function createClient(options = {}) {
   Object.assign(client, {
     results: executor.results,
     configure: configuration.configure,
-    set: configuration.set,
+    set(key, value) {
+      const parameters = configuration.set(key, value);
+
+      // Pooled connections were opened with the old settings; reopen them lazily.
+      if (key === 'pool' || key === 'connectionLimit' || connectionKeys.includes(key)) {
+        executor.resetPool();
+      }
+
+      return parameters;
+    },
     get: configuration.get,
     changeUser(connection, values, callback) {
       connection.changeUser(values, callback);
@@ -28,6 +37,8 @@ function createClient(options = {}) {
     runEscape: executor.runEscape,
     runAsync: executor.runAsync,
     runEscapeAsync: executor.runEscapeAsync,
+    end: executor.end,
+    endAsync: executor.endAsync,
     list: output.list,
     toXML: xml.toXML,
     toXMLAsync: xml.toXMLAsync,

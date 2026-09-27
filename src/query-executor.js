@@ -2,6 +2,7 @@
 
 const mysql = require('mysql');
 const configureQueryFormat = require('./query-format');
+const { queryFormat } = configureQueryFormat;
 const output = require('./output');
 
 function describeResult(result) {
@@ -26,11 +27,39 @@ function toResponse(result, fields) {
 function createExecutor(configuration) {
   let sqlResults = 0;
   let lastInsertId = null;
+  let pool = null;
+
+  function getPool() {
+    if (!pool) {
+      pool = mysql.createPool({ ...configuration.poolOptions(), queryFormat });
+    }
+
+    return pool;
+  }
+
+  function closePool(callback) {
+    const current = pool;
+
+    pool = null;
+
+    if (!current) {
+      process.nextTick(callback);
+
+      return;
+    }
+
+    current.end(callback);
+  }
 
   function execute(sql, values, shouldEscape, callback) {
-    const connection = mysql.createConnection(configuration.connectionOptions());
+    const usePool = Boolean(configuration.get('pool'));
+    const connection = usePool
+      ? getPool()
+      : mysql.createConnection(configuration.connectionOptions());
 
-    configureQueryFormat(connection);
+    if (!usePool) {
+      configureQueryFormat(connection);
+    }
 
     function complete(error, result, fields) {
       if (!error && result) {
@@ -56,7 +85,9 @@ function createExecutor(configuration) {
       output.sql(sql);
     }
 
-    connection.end();
+    if (!usePool) {
+      connection.end();
+    }
   }
 
   const executor = {
@@ -64,6 +95,20 @@ function createExecutor(configuration) {
     lastInsertId: () => lastInsertId,
     setLastInsertId: (value) => {
       lastInsertId = value;
+    },
+    // Closes pooled connections; later queries open a new pool if pooling is still enabled.
+    end(callback = () => {}) {
+      closePool((error) => callback(error || null));
+    },
+    endAsync() {
+      return new Promise((resolve, reject) => {
+        closePool((error) => (error ? reject(error) : resolve()));
+      });
+    },
+    resetPool() {
+      if (pool) {
+        closePool(() => {});
+      }
     },
     run(sql, callback) {
       execute(sql, undefined, false, callback);

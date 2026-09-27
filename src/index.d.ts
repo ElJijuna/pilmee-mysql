@@ -30,6 +30,10 @@ declare namespace db {
     supportBigNumbers?: boolean;
     bigNumberStrings?: boolean;
     timezone?: string;
+    /** Reuse connections from a pool. Call `end()`/`endAsync()` to let the process exit. */
+    pool?: boolean;
+    /** Maximum pooled connections (default 10). */
+    connectionLimit?: number;
     [key: string]: unknown;
   }
 
@@ -51,6 +55,8 @@ declare namespace db {
       sql: string,
       values: Record<string, unknown>,
     ): Promise<QueryResponse<T>>;
+    end(callback?: (error: MysqlError | null) => void): void;
+    endAsync(): Promise<void>;
     list(
       result: Array<Record<string, unknown>>,
       keyName: string,

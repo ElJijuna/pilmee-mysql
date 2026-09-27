@@ -5,13 +5,15 @@ const assert = require('node:assert/strict');
 const db = require('..');
 const hasDatabase = Boolean(process.env.MYSQL_HOST);
 const integrationTest = hasDatabase ? test : test.skip;
-const client = db.createClient({
+const settings = {
   host: process.env.MYSQL_HOST,
   port: Number(process.env.MYSQL_PORT || 3306),
   user: process.env.MYSQL_USER,
   password: process.env.MYSQL_PASSWORD,
   database: process.env.MYSQL_DATABASE,
-});
+};
+const client = db.createClient(settings);
+const pooledClient = db.createClient({ ...settings, pool: true, connectionLimit: 2 });
 
 if (hasDatabase) {
   before(async () => {
@@ -23,6 +25,7 @@ if (hasDatabase) {
 
   after(async () => {
     await client.runAsync('DROP TABLE IF EXISTS pilmee_items');
+    await pooledClient.endAsync();
   });
 }
 
@@ -62,4 +65,17 @@ integrationTest('keeps insert ids separate for concurrent inserts', async () => 
 
     assert.equal(result[0].title, titles[index]);
   }
+});
+
+integrationTest('runs concurrent queries through a connection pool', async () => {
+  const responses = await Promise.all(
+    [1, 2, 3, 4, 5].map((value) =>
+      pooledClient.runEscapeAsync('SELECT :value AS value', { value }),
+    ),
+  );
+
+  assert.deepEqual(
+    responses.map(({ result }) => result[0].value),
+    [1, 2, 3, 4, 5],
+  );
 });

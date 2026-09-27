@@ -17,6 +17,8 @@ test('preserves the public CommonJS interface', () => {
     'runEscape',
     'runAsync',
     'runEscapeAsync',
+    'end',
+    'endAsync',
     'list',
     'toXML',
     'toXMLAsync',
@@ -215,6 +217,75 @@ test('returns per-query metadata that is not affected by concurrent queries', as
   } finally {
     mysql.createConnection = original;
   }
+});
+
+test('reuses a pool with named parameters when pool is enabled', async () => {
+  const originalPool = mysql.createPool;
+  const originalConnection = mysql.createConnection;
+  const created = [];
+
+  let ended = 0;
+
+  mysql.createConnection = () => {
+    throw new Error('should not open a standalone connection');
+  };
+
+  mysql.createPool = (options) => {
+    const pool = {
+      options,
+      query: (_sql, _values, callback) => callback(null, [{ id: 1 }], []),
+      end: (callback) => {
+        ended++;
+        process.nextTick(callback);
+      },
+    };
+
+    created.push(pool);
+
+    return pool;
+  };
+
+  try {
+    const client = db.createClient({ host: 'pool.example', pool: true, connectionLimit: 3 });
+
+    await client.runEscapeAsync('SELECT :id', { id: 1 });
+    await client.runEscapeAsync('SELECT :id', { id: 2 });
+
+    assert.equal(created.length, 1);
+    assert.equal(created[0].options.host, 'pool.example');
+    assert.equal(created[0].options.connectionLimit, 3);
+    assert.equal(
+      created[0].options.queryFormat.call({ escape: (value) => `<${value}>` }, 'SELECT :id', {
+        id: 7,
+      }),
+      'SELECT <7>',
+    );
+
+    client.set('database', 'other');
+    await client.runEscapeAsync('SELECT :id', { id: 3 });
+
+    assert.equal(created.length, 2, 'changing connection settings reopens the pool');
+    assert.equal(created[1].options.database, 'other');
+
+    await client.endAsync();
+
+    assert.equal(ended, 2);
+  } finally {
+    mysql.createPool = originalPool;
+    mysql.createConnection = originalConnection;
+  }
+});
+
+test('end is a no-op without a pool', async () => {
+  const client = db.createClient();
+
+  await assert.doesNotReject(client.endAsync());
+  await new Promise((resolve) => {
+    client.end((error) => {
+      assert.equal(error, null);
+      resolve();
+    });
+  });
 });
 
 test('creates clients with isolated configuration and result state', () => {

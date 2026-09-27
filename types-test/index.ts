@@ -3,6 +3,8 @@ import db = require('..');
 const client = db.createClient({
   host: 'localhost',
   port: 3306,
+  pool: true,
+  connectionLimit: 5,
 });
 
 client.run('SELECT 1', (error, result, fields) => {
@@ -21,6 +23,7 @@ async function query(): Promise<void> {
   const insertId: number | null = response.insertId;
   void count;
   void insertId;
+  await client.endAsync();
 }
 
 void query();

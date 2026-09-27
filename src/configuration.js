@@ -13,7 +13,21 @@ const defaults = {
   supportBigNumbers: false,
   bigNumberStrings: false,
   timezone: 'local',
+  pool: false,
+  connectionLimit: 10,
 };
+const connectionKeys = [
+  'host',
+  'user',
+  'password',
+  'database',
+  'port',
+  'debug',
+  'insecureAuth',
+  'supportBigNumbers',
+  'bigNumberStrings',
+  'timezone',
+];
 
 function createConfiguration(initial = {}) {
   const parameters = { ...defaults, ...initial };
@@ -31,20 +45,15 @@ function createConfiguration(initial = {}) {
       return parameters[key];
     },
     connectionOptions() {
+      return Object.fromEntries(connectionKeys.map((key) => [key, parameters[key]]));
+    },
+    poolOptions() {
       return {
-        host: parameters.host,
-        user: parameters.user,
-        password: parameters.password,
-        database: parameters.database,
-        port: parameters.port,
-        debug: parameters.debug,
-        insecureAuth: parameters.insecureAuth,
-        supportBigNumbers: parameters.supportBigNumbers,
-        bigNumberStrings: parameters.bigNumberStrings,
-        timezone: parameters.timezone,
+        ...this.connectionOptions(),
+        connectionLimit: parameters.connectionLimit,
       };
     },
   };
 }
 
-module.exports = { createConfiguration };
+module.exports = { createConfiguration, connectionKeys };
