@@ -15,7 +15,13 @@
         "mysql",
         "mysql-manager"
     ],
-    "main": "pilmee-mysql.js",
+    "exports": {
+        ".": "./src/index.js"
+    },
+    "files": [
+        "src"
+    ],
+    "main": "./src/index.js",
     "maintainers": [
         {
             "name": "@pilmee"

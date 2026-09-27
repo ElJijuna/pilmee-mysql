@@ -1,4 +1,4 @@
-var db = require('./pilmee-mysql');
+var db = require('.');
 
 db.configure(() => {
   db.set('host', 'localhost');

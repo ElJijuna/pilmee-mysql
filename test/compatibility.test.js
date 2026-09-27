@@ -18,7 +18,6 @@ test('preserves the public CommonJS interface', () => {
     'list',
     'toXML',
   ]);
-  assert.equal(require('../pilmee-mysql'), db);
   assert.equal(db.lastInsertId, null);
 });
 
