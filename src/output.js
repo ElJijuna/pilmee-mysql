@@ -1,6 +1,10 @@
 'use strict';
 
-const colors = require('colors/safe');
+const { styleText } = require('node:util');
+
+function bold(color, text) {
+  return styleText(color, styleText('bold', text));
+}
 
 exports.sql = function sql(statement) {
   console.log(`\n │ \n │ SQL DEBUG\n │ \n │→ ${statement}\n │ \n | --- end ---\n │\n`);
@@ -8,13 +12,12 @@ exports.sql = function sql(statement) {
 
 exports.list = function list(result, keyName, displayName, callback) {
   console.log(
-    colors.green(
-      colors.bold(
-        '\n─────────────────────────────────────────────────\nSQL Data List\n─────────────────────────────────────────────────\n',
-      ),
+    bold(
+      'green',
+      '\n─────────────────────────────────────────────────\nSQL Data List\n─────────────────────────────────────────────────\n',
     ),
   );
-  console.log(colors.magenta(colors.bold('  #\tKEY\tDISPLAY NAME')));
+  console.log(bold('magenta', '  #\tKEY\tDISPLAY NAME'));
   let position = 1;
 
   for (const element in result) {
@@ -23,5 +26,5 @@ exports.list = function list(result, keyName, displayName, callback) {
   }
 
   callback();
-  console.log(colors.green(colors.bold('─────────────────────────────────────────────────')));
+  console.log(bold('green', '─────────────────────────────────────────────────'));
 };

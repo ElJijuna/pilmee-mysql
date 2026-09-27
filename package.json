@@ -1,6 +1,5 @@
 {
     "dependencies": {
-        "colors": "^1.4.0",
         "mysql2": "^3.24.4",
         "xml-mapping": "^1.7.2"
     },
